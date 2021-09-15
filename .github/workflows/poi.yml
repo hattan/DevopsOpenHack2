@@ -1,0 +1,51 @@
+name: POI CI
+
+env:
+  build_name: POI
+
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+    paths: 
+      - apis/poi/**
+      - .github/workflows/poi.yml
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.202'
+    - name: Add Code Coverage Tools
+      working-directory: apis/poi/tests/UnitTests
+      run: dotnet add package coverlet.msbuild
+
+    - name: Install dependencies
+      run: dotnet restore apis/poi/web/*.csproj
+      
+    - name: .NET Build Web
+      run: dotnet build --configuration Release --no-restore apis/poi/web/*.csproj
+
+    - name: .NET Build Unit Tests
+      run: dotnet build --configuration Release apis/poi/tests/UnitTests/UnitTests.csproj
+
+    - name: .NET Test
+      run: dotnet test --no-restore --verbosity normal apis/poi/tests/UnitTests  /p:CollectCoverage=true /p:CoverletOutput=lcov/ /p:CoverletOutputFormat=lcov
+       
+    - uses: actions/github-script@0.9.0
+      if: failure()
+      with:
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          let body = "${{ env.build_name }} Workflow Failure \n Build Number: ${{ github.run_number }} \n Build Log: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} \n SHA: [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) \n";
+          github.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: "${{ env.build_name }} Workflow ${{ github.run_number }} Failed! ",
+            body: body
+          });
