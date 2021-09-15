@@ -3,13 +3,19 @@ name: POI CI
 env:
   build_name: POI
 
+
 on:
   push:
+    branches: [ master ]
+    paths: 
+      - apis/poi/**  
+      - .github/workflows/poi.yml
   pull_request:
     branches: [ master ]
     paths: 
       - apis/poi/**
       - .github/workflows/poi.yml
+
 
 jobs:
   build_and_test:
